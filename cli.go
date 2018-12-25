@@ -513,6 +513,11 @@ func (cli *CLI) ParseFlags(args []string) (*config.Config, []string, bool, bool,
 		return nil
 	}), "vault-token", "")
 
+	flags.Var((funcVar)(func(s string) error {
+		c.Vault.VaultAgentTokenFile = config.String(s)
+		return nil
+	}), "vault-agent-token-file", "")
+
 	flags.Var((funcBoolVar)(func(b bool) error {
 		c.Vault.UnwrapToken = config.Bool(b)
 		return nil

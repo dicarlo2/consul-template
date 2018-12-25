@@ -33,6 +33,7 @@ type consulClient struct {
 type vaultClient struct {
 	client     *vaultapi.Client
 	httpClient *http.Client
+	input      *CreateVaultClientInput
 }
 
 // CreateConsulClientInput is used as input to the CreateConsulClient function.
@@ -297,6 +298,7 @@ func (c *ClientSet) CreateVaultClient(i *CreateVaultClientInput) error {
 	c.vault = &vaultClient{
 		client:     client,
 		httpClient: vaultConfig.HttpClient,
+		input:      i,
 	}
 	c.Unlock()
 
@@ -329,4 +331,34 @@ func (c *ClientSet) Stop() {
 	if c.vault != nil {
 		c.vault.httpClient.Transport.(*http.Transport).CloseIdleConnections()
 	}
+}
+
+// SetVaultToken set a new token on the client
+func (c *ClientSet) SetVaultToken(token string) error {
+	if token != "" {
+		c.client.SetToken(token)
+	}
+
+	if c.input.UnwrapToken {
+		secret, err := c.client.Logical().Unwrap(token)
+		if err != nil {
+			return fmt.Errorf("client set: vault unwrap: %s", err)
+		}
+
+		if secret == nil {
+			return fmt.Errorf("client set: vault unwrap: no secret")
+		}
+
+		if secret.Auth == nil {
+			return fmt.Errorf("client set: vault unwrap: no secret auth")
+		}
+
+		if secret.Auth.ClientToken == "" {
+			return fmt.Errorf("client set: vault unwrap: no token returned")
+		}
+
+		c.client.SetToken(secret.Auth.ClientToken)
+	}
+
+	return nil
 }

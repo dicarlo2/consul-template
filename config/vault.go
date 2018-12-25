@@ -56,6 +56,8 @@ type VaultConfig struct {
 	// environment variable.
 	Token *string `mapstructure:"token" json:"-"`
 
+	VaultAgentTokenFile *string `mapstructure:"vault_agent_token_file" json:"-"`
+
 	// Transport configures the low-level network connection details.
 	Transport *TransportConfig `mapstructure:"transport"`
 
@@ -102,6 +104,8 @@ func (c *VaultConfig) Copy() *VaultConfig {
 	}
 
 	o.Token = c.Token
+
+	o.VaultAgentTokenFile = c.VaultAgentTokenFile
 
 	if c.Transport != nil {
 		o.Transport = c.Transport.Copy()
@@ -156,6 +160,10 @@ func (c *VaultConfig) Merge(o *VaultConfig) *VaultConfig {
 
 	if o.Token != nil {
 		r.Token = o.Token
+	}
+
+	if o.VaultAgentTokenFile != nil {
+		r.VaultAgentTokenFile = o.VaultAgentTokenFile
 	}
 
 	if o.Transport != nil {
@@ -233,6 +241,11 @@ func (c *VaultConfig) Finalize() {
 		}
 	}
 
+	if c.VaultAgentTokenFile != nil {
+		c.Token = stringFromFile([]string{*c.VaultAgentTokenFile}, "")
+		c.RenewToken = Bool(false)
+	}
+
 	if c.Transport == nil {
 		c.Transport = DefaultTransportConfig()
 	}
@@ -263,16 +276,18 @@ func (c *VaultConfig) GoString() string {
 		"Retry:%#v, "+
 		"SSL:%#v, "+
 		"Token:%t, "+
+		"VaultAgentTokenFile:%t, "+
 		"Transport:%#v, "+
 		"UnwrapToken:%s"+
 		"}",
 		StringGoString(c.Address),
-		TimeDurationGoString(c.Grace),
 		BoolGoString(c.Enabled),
+		TimeDurationGoString(c.Grace),
 		BoolGoString(c.RenewToken),
 		c.Retry,
 		c.SSL,
 		StringPresent(c.Token),
+		StringPresent(c.VaultAgentTokenFile),
 		c.Transport,
 		BoolGoString(c.UnwrapToken),
 	)

@@ -65,6 +65,8 @@ type NewWatcherInput struct {
 	// VaultToken is the vault token to renew.
 	VaultToken string
 
+	VaultAgentTokenFile string
+
 	// RetryFuncs specify the different ways to retry based on the upstream.
 	RetryFuncConsul  RetryFunc
 	RetryFuncDefault RetryFunc
@@ -98,6 +100,16 @@ func NewWatcher(i *NewWatcherInput) (*Watcher, error) {
 			return nil, errors.Wrap(err, "watcher")
 		}
 		if _, err := w.Add(vt); err != nil {
+			return nil, errors.Wrap(err, "watcher")
+		}
+	}
+
+	if len(i.VaultAgentTokenFile) > 0 {
+		vag, err := dep.NewVaultAgentTokenQuery(i.VaultAgentTokenFile)
+		if err != nil {
+			return nil, errors.Wrap(err, "watcher")
+		}
+		if _, err := w.Add(vag); err != nil {
 			return nil, errors.Wrap(err, "watcher")
 		}
 	}
