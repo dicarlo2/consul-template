@@ -272,7 +272,7 @@ func (c *ClientSet) CreateVaultClient(i *CreateVaultClientInput) error {
 	}
 
 	// Check if we are unwrapping
-	if i.UnwrapToken {
+	if i.Token != "" && i.UnwrapToken {
 		secret, err := client.Logical().Unwrap(i.Token)
 		if err != nil {
 			return fmt.Errorf("client set: vault unwrap: %s", err)
