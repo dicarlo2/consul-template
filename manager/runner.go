@@ -15,6 +15,8 @@ import (
 	dep "github.com/hashicorp/consul-template/dependency"
 	"github.com/hashicorp/consul-template/template"
 	"github.com/hashicorp/consul-template/watch"
+	multierror "github.com/hashicorp/go-multierror"
+	shellwords "github.com/mattn/go-shellwords"
 	"github.com/pkg/errors"
 )
 
