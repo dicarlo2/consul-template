@@ -335,11 +335,8 @@ func (c *ClientSet) Stop() {
 
 // SetVaultToken set a new token on the client
 func (c *ClientSet) SetVaultToken(token string) error {
-	if token != "" {
-		c.vault.client.SetToken(token)
-	}
-
 	if c.vault.input.UnwrapToken {
+		c.vault.client.ClearToken()
 		secret, err := c.vault.client.Logical().Unwrap(token)
 		if err != nil {
 			return fmt.Errorf("client set: vault unwrap: %s", err)
@@ -358,6 +355,8 @@ func (c *ClientSet) SetVaultToken(token string) error {
 		}
 
 		c.vault.client.SetToken(secret.Auth.ClientToken)
+	} else if token != "" {
+		c.vault.client.SetToken(token)
 	}
 
 	return nil
