@@ -357,15 +357,15 @@ func (c *ClientSet) SetVaultToken(token string) error {
 			return fmt.Errorf("client set: vault unwrap: no secret")
 		}
 
-		if secret.Auth == nil {
-			return fmt.Errorf("client set: vault unwrap: no secret auth")
+		if secret.Data == nil {
+			return fmt.Errorf("client set: vault unwrap: no secret data")
 		}
 
-		if secret.Auth.ClientToken == "" {
+		if secret.Data["Token"] == "" {
 			return fmt.Errorf("client set: vault unwrap: no token returned")
 		}
 
-		c.vault.client.SetToken(secret.Auth.ClientToken)
+		c.vault.client.SetToken(secret.Data["Token"].(string))
 	} else if token != "" {
 		c.vault.client.SetToken(token)
 	}
