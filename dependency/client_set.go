@@ -2,6 +2,7 @@ package dependency
 
 import (
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net"
@@ -333,11 +334,21 @@ func (c *ClientSet) Stop() {
 	}
 }
 
+type parsedToken struct {
+	Token string
+}
+
 // SetVaultToken set a new token on the client
 func (c *ClientSet) SetVaultToken(token string) error {
 	if c.vault.input.UnwrapToken {
 		c.vault.client.ClearToken()
-		secret, err := c.vault.client.Logical().Unwrap(token)
+		var p parsedToken
+		err := json.Unmarshal([]byte(token), &p)
+		if err != nil {
+			return fmt.Errorf("client set: parse json: %s", err)
+		}
+
+		secret, err := c.vault.client.Logical().Unwrap(p.Token)
 		if err != nil {
 			return fmt.Errorf("client set: vault unwrap: %s", err)
 		}
