@@ -63,16 +63,17 @@ type CreateConsulClientInput struct {
 
 // CreateVaultClientInput is used as input to the CreateVaultClient function.
 type CreateVaultClientInput struct {
-	Address     string
-	Token       string
-	UnwrapToken bool
-	SSLEnabled  bool
-	SSLVerify   bool
-	SSLCert     string
-	SSLKey      string
-	SSLCACert   string
-	SSLCAPath   string
-	ServerName  string
+	Address         string
+	Token           string
+	UnwrapToken     bool
+	VaultAgentToken bool
+	SSLEnabled      bool
+	SSLVerify       bool
+	SSLCert         string
+	SSLKey          string
+	SSLCACert       string
+	SSLCAPath       string
+	ServerName      string
 
 	TransportDialKeepAlive       time.Duration
 	TransportDialTimeout         time.Duration
@@ -267,31 +268,42 @@ func (c *ClientSet) CreateVaultClient(i *CreateVaultClientInput) error {
 		return fmt.Errorf("client set: vault: %s", err)
 	}
 
-	// Set the token if given
-	if i.Token != "" {
-		client.SetToken(i.Token)
-	}
-
-	// Check if we are unwrapping
-	if i.Token != "" && i.UnwrapToken {
-		secret, err := client.Logical().Unwrap(i.Token)
-		if err != nil {
-			return fmt.Errorf("client set: vault unwrap: %s", err)
+	if i.VaultAgentToken {
+		if i.Token != "" {
+			var p parsedToken
+			err := json.Unmarshal([]byte(i.Token), &p)
+			if err != nil {
+				return fmt.Errorf("client set: parse json: %s", err)
+			}
+			client.SetToken(p.Token)
+		}
+	} else {
+		// Set the token if given
+		if i.Token != "" {
+			client.SetToken(i.Token)
 		}
 
-		if secret == nil {
-			return fmt.Errorf("client set: vault unwrap: no secret")
-		}
+		// Check if we are unwrapping
+		if i.Token != "" && i.UnwrapToken {
+			secret, err := client.Logical().Unwrap(i.Token)
+			if err != nil {
+				return fmt.Errorf("client set: vault unwrap: %s", err)
+			}
 
-		if secret.Auth == nil {
-			return fmt.Errorf("client set: vault unwrap: no secret auth")
-		}
+			if secret == nil {
+				return fmt.Errorf("client set: vault unwrap: no secret")
+			}
 
-		if secret.Auth.ClientToken == "" {
-			return fmt.Errorf("client set: vault unwrap: no token returned")
-		}
+			if secret.Auth == nil {
+				return fmt.Errorf("client set: vault unwrap: no secret auth")
+			}
 
-		client.SetToken(secret.Auth.ClientToken)
+			if secret.Auth.ClientToken == "" {
+				return fmt.Errorf("client set: vault unwrap: no token returned")
+			}
+
+			client.SetToken(secret.Auth.ClientToken)
+		}
 	}
 
 	// Save the data on ourselves
@@ -338,16 +350,16 @@ type parsedToken struct {
 	Token string
 }
 
-// SetVaultToken set a new token on the client
-func (c *ClientSet) SetVaultToken(token string) error {
+// SetVaultAgentToken set a new token on the client
+func (c *ClientSet) SetVaultAgentToken(token string) error {
+	var p parsedToken
+	err := json.Unmarshal([]byte(token), &p)
+	if err != nil {
+		return fmt.Errorf("client set: parse json: %s", err)
+	}
+
 	if c.vault.input.UnwrapToken {
 		c.vault.client.ClearToken()
-		var p parsedToken
-		err := json.Unmarshal([]byte(token), &p)
-		if err != nil {
-			return fmt.Errorf("client set: parse json: %s", err)
-		}
-
 		secret, err := c.vault.client.Logical().Unwrap(p.Token)
 		if err != nil {
 			return fmt.Errorf("client set: vault unwrap: %s", err)
@@ -366,8 +378,8 @@ func (c *ClientSet) SetVaultToken(token string) error {
 		}
 
 		c.vault.client.SetToken(secret.Data["Token"].(string))
-	} else if token != "" {
-		c.vault.client.SetToken(token)
+	} else if p.Token != "" {
+		c.vault.client.SetToken(p.Token)
 	}
 
 	return nil

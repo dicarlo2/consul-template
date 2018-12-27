@@ -58,7 +58,7 @@ func (d *VaultAgentTokenQuery) Fetch(clients *ClientSet, opts *QueryOptions) (in
 		}
 
 		d.stat = r.stat
-		if err := clients.SetVaultToken(strings.TrimSpace(string(token))); err != nil {
+		if err := clients.SetVaultAgentToken(strings.TrimSpace(string(token))); err != nil {
 			return "", nil, errors.Wrap(err, d.String())
 		}
 	}
