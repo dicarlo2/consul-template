@@ -269,13 +269,33 @@ func (c *ClientSet) CreateVaultClient(i *CreateVaultClientInput) error {
 	}
 
 	if i.VaultAgentToken {
-		if i.Token != "" {
+		if i.Token != "" && i.UnwrapToken {
 			var p parsedToken
 			err := json.Unmarshal([]byte(i.Token), &p)
 			if err != nil {
 				return fmt.Errorf("client set: parse json: %s", err)
 			}
-			client.SetToken(p.Token)
+			client.ClearToken()
+			secret, err := client.Logical().Unwrap(p.Token)
+			if err != nil {
+				return fmt.Errorf("client set: vault unwrap: %s", err)
+			}
+
+			if secret == nil {
+				return fmt.Errorf("client set: vault unwrap: no secret")
+			}
+
+			if secret.Data == nil {
+				return fmt.Errorf("client set: vault unwrap: no secret data")
+			}
+
+			if secret.Data["Token"] == "" {
+				return fmt.Errorf("client set: vault unwrap: no token returned")
+			}
+
+			client.SetToken(secret.Data["Token"].(string))
+		} else if i.Token != "" {
+			client.SetToken(i.Token)
 		}
 	} else {
 		// Set the token if given
@@ -352,13 +372,12 @@ type parsedToken struct {
 
 // SetVaultAgentToken set a new token on the client
 func (c *ClientSet) SetVaultAgentToken(token string) error {
-	var p parsedToken
-	err := json.Unmarshal([]byte(token), &p)
-	if err != nil {
-		return fmt.Errorf("client set: parse json: %s", err)
-	}
-
 	if c.vault.input.UnwrapToken {
+		var p parsedToken
+		err := json.Unmarshal([]byte(token), &p)
+		if err != nil {
+			return fmt.Errorf("client set: parse json: %s", err)
+		}
 		c.vault.client.ClearToken()
 		secret, err := c.vault.client.Logical().Unwrap(p.Token)
 		if err != nil {
@@ -378,8 +397,8 @@ func (c *ClientSet) SetVaultAgentToken(token string) error {
 		}
 
 		c.vault.client.SetToken(secret.Data["Token"].(string))
-	} else if p.Token != "" {
-		c.vault.client.SetToken(p.Token)
+	} else if token != "" {
+		c.vault.client.SetToken(token)
 	}
 
 	return nil
